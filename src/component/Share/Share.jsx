@@ -42,7 +42,7 @@ const Share = () => {
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            await addDoc(collection(db, "posts"), {
+            await addDoc(collection(db, "Posts"), {
               uid: currentUser.uid,
               photoURL: currentUser.photoURL,
               displayName: currentUser.displayName,
@@ -66,7 +66,7 @@ const Share = () => {
         }
       );
     } else {
-      await addDoc(collection(db, "posts"), {
+      await addDoc(collection(db, "Posts"), {
         uid: currentUser.uid,
         photoURL: currentUser.photoURL,
         displayName: currentUser.displayName,
