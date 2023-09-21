@@ -1,3 +1,4 @@
+import React, { useContext, useState } from "react";
 import {
   Close,
   EmojiEmotions,
@@ -7,9 +8,6 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
 import { v4 as uuid } from "uuid";
-import React, { useContext, useState } from "react";
-import "./share.scss";
-import { AuthContext } from "./../Context/AuthContext";
 import {
   addDoc,
   arrayUnion,
@@ -19,80 +17,93 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-// import Picker from "@emoji-mart/react"; 
+import { AuthContext } from "../Context/AuthContext";
+import "./share.scss";
 
 const Share = () => {
   const [error, setError] = useState(false);
   const { currentUser } = useContext(AuthContext);
   const [input, setInput] = useState("");
   const [showEmojis, setShowEmojis] = useState(false);
-
   const [img, setImg] = useState(null);
 
   const handlePost = async () => {
-    if (img) {
-      const storageRef = ref(storage, "Posts/" + uuid());
-      const storagePath = "Posts/" + uuid();
-      console.log("Storage Path:", storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, img);
+    try {
+      if (img) {
+        const storagePath = "Posts/" + uuid();
+        const storageRef = ref(storage, storagePath);
+        console.log("Storage Path:", storagePath);
 
-      uploadTask.on(
-        (error) => {
-          setError(true);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            await addDoc(collection(db, "Posts"), {
-              uid: currentUser.uid,
-              photoURL: currentUser.photoURL,
-              displayName: currentUser.displayName,
-              input,
-              img: downloadURL,
-              timestamp: serverTimestamp(),
-            });
+        const uploadTask = uploadBytesResumable(storageRef, img);
 
-            await updateDoc(doc(db, "usersPosts", currentUser.uid), {
-              messages: arrayUnion({
-                id: uuid(),
-                uid: currentUser.uid,
-                photoURL: currentUser.photoURL,
-                displayName: currentUser.displayName,
-                input,
-                img: downloadURL,
-                timestamp: Timestamp.now(),
-              }),
-            });
-          });
-        }
-      );
-    } else {
-      await addDoc(collection(db, "Posts"), {
-        uid: currentUser.uid,
-        photoURL: currentUser.photoURL,
-        displayName: currentUser.displayName,
-        input,
+        uploadTask.on(
+          "state_changed",
+          null,
+          (error) => {
+            setError(true);
+          },
+          () => {
+            getDownloadURL(uploadTask.snapshot.ref)
+              .then(async (downloadURL) => {
+                await addDoc(collection(db, "Posts"), {
+                  uid: currentUser.uid,
+                  photoURL: currentUser.photoURL,
+                  displayName: currentUser.displayName,
+                  input,
+                  img: downloadURL,
+                  timestamp: serverTimestamp(),
+                });
 
-        timestamp: serverTimestamp(),
-      });
-
-      await updateDoc(doc(db, "usersPosts", currentUser.uid), {
-        messages: arrayUnion({
-          id: uuid(),
+                await updateDoc(doc(db, "usersPosts", currentUser.uid), {
+                  messages: arrayUnion({
+                    id: uuid(),
+                    uid: currentUser.uid,
+                    photoURL: currentUser.photoURL,
+                    displayName: currentUser.displayName,
+                    input,
+                    img: downloadURL,
+                    timestamp: Timestamp.now(),
+                  }),
+                });
+              })
+              .catch((error) => {
+                console.error("Error getting download URL:", error);
+              });
+          }
+        );
+      } else {
+        await addDoc(collection(db, "Posts"), {
           uid: currentUser.uid,
           photoURL: currentUser.photoURL,
           displayName: currentUser.displayName,
           input,
+          timestamp: serverTimestamp(),
+        });
 
-          timestamp: Timestamp.now(),
-        }),
-      });
+        await updateDoc(doc(db, "usersPosts", currentUser.uid), {
+          messages: arrayUnion({
+            id: uuid(),
+            uid: currentUser.uid,
+            photoURL: currentUser.photoURL,
+            displayName: currentUser.displayName,
+            input,
+            timestamp: Timestamp.now(),
+          }),
+        });
+      }
+      setInput("");
+      setImg(null);
+      setShowEmojis(false);
+    } catch (error) {
+      console.error("Error posting:", error);
+      setError(true);
     }
-    setInput("");
-    setImg(null);
-    setShowEmojis(false);
   };
+
   const handleKey = (e) => {
-    e.code === "Enter" && handlePost();
+    if (e.code === "Enter") {
+      handlePost();
+    }
   };
 
   const addEmoji = (e) => {
@@ -106,12 +117,16 @@ const Share = () => {
   const removeImage = () => {
     setImg(null);
   };
-  // console.log(currentUser);
+
   return (
     <div className="share">
       <div className="shareWrapper">
         <div className="shareTop">
-          <img src={currentUser.photoURL} alt="" className="shareProfileImg" />
+          <img
+            src={currentUser.photoURL}
+            alt=""
+            className="shareProfileImg"
+          />
           <textarea
             type="text"
             rows={2}
@@ -126,7 +141,11 @@ const Share = () => {
         <hr className="shareHr" />
         {img && (
           <div className="shareImgContainer">
-            <img src={URL.createObjectURL(img)} alt="" className="shareImg" />
+            <img
+              src={URL.createObjectURL(img)}
+              alt=""
+              className="shareImg"
+            />
             <Close className="shareCancelImg" onClick={removeImage} />
           </div>
         )}
@@ -140,7 +159,10 @@ const Share = () => {
               <span className="shareOptionText">Live Video</span>
             </div>
             <label htmlFor="file" className="shareOption">
-              <PermMedia className="shareIcon" style={{ color: "#2e0196f1" }} />
+              <PermMedia
+                className="shareIcon"
+                style={{ color: "#2e0196f1" }}
+              />
               <span className="shareOptionText">Photo/Video</span>
               <input
                 type="file"

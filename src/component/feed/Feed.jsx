@@ -12,7 +12,7 @@ const Feed = () => {
 
   useEffect(()=>{
 
-    const unSub = onSnapshot(collection(db, "posts"), (snapshot) => {
+    const unSub = onSnapshot(collection(db, "Posts"), (snapshot) => {
       setPosts(snapshot.docs.map((doc) => ({ id: doc.id, data: doc.data() })));
     });
   },[])
